@@ -24,10 +24,12 @@ Or install it yourself as:
 
 ## Example
 
-    require 'sashite-pan'
+```ruby
+require 'sashite-pan'
 
-    action = Sashite::PAN.load :shift, 42, 43
-    action.src_square # => 42
+action = Sashite::PAN.load :shift, 42, 43
+action.src_square # => 42
+```
 
 ## Contributing
 
