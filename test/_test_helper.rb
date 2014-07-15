@@ -1,2 +1,2 @@
-require 'sashite/pan'
 require 'minitest/autorun'
+require 'sashite/pan'
