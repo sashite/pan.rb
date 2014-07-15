@@ -29,8 +29,8 @@ describe Sashite::PAN do
         @action.actor.must_equal :foobar
       end
 
-      it 'returns the dst_square of the action' do
-        @action.dst_square.must_equal 42
+      it 'returns the square of the action' do
+        @action.square.must_equal 42
       end
     end
   end

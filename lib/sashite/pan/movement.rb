@@ -1,6 +1,6 @@
 module Sashite
   module PAN
-    class Shift
+    class Movement
       attr_reader :src_square, :dst_square
 
       def initialize src_square, dst_square

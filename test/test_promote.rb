@@ -25,8 +25,8 @@ describe Sashite::PAN do
         @action.to_a.must_equal Sashite::PAN::Promote.new(42, :foobar).to_a
       end
 
-      it 'returns the src_square of the action' do
-        @action.src_square.must_equal 42
+      it 'returns the square of the action' do
+        @action.square.must_equal 42
       end
 
       it 'returns the actor of the action' do
