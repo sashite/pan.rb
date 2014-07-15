@@ -22,6 +22,28 @@ Or install it yourself as:
 
     $ gem install sashite-pan
 
+## API
+
+Module method:
+
+```ruby
+Sashite::PAN.load verb, arg1, arg2
+```
+
+Set actor's instance methods:
+
+* `verb`
+* `actor`
+* `square`
+* `to_a`
+
+Movement's instance methods:
+
+* `verb`
+* `src_square`
+* `dst_square`
+* `to_a`
+
 ## Example
 
 ```ruby
@@ -29,6 +51,7 @@ require 'sashite-pan'
 
 action = Sashite::PAN.load :shift, 42, 43
 action.src_square # => 42
+action.to_a       # => [ :shift, 42, 43 ]
 ```
 
 ## Contributing

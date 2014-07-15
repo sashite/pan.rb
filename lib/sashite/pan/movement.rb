@@ -14,10 +14,14 @@ module Sashite
 
       def to_a
         [
-          self.class.name.split('::').last.downcase.to_sym,
+          verb,
           @src_square,
           @dst_square
         ]
+      end
+
+      def verb
+        self.class.name.split('::').last.downcase.to_sym
       end
     end
   end

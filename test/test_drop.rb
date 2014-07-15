@@ -25,6 +25,10 @@ describe Sashite::PAN do
         @action.to_a.must_equal Sashite::PAN::Drop.new(42, :foobar).to_a
       end
 
+      it 'returns the verb of the action' do
+        @action.verb.must_equal :drop
+      end
+
       it 'returns the actor of the action' do
         @action.actor.must_equal :foobar
       end

@@ -25,6 +25,10 @@ describe Sashite::PAN do
         @action.to_a.must_equal Sashite::PAN::Promote.new(42, :foobar).to_a
       end
 
+      it 'returns the verb of the action' do
+        @action.verb.must_equal :promote
+      end
+
       it 'returns the square of the action' do
         @action.square.must_equal 42
       end

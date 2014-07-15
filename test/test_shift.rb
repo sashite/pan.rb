@@ -29,6 +29,10 @@ describe Sashite::PAN do
         @action.to_a.must_equal Sashite::PAN::Shift.new(42, 43).to_a
       end
 
+      it 'returns the verb of the action' do
+        @action.verb.must_equal :shift
+      end
+
       it 'returns the src_square of the action' do
         @action.src_square.must_equal 42
       end
