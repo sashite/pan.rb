@@ -1,6 +1,6 @@
 # Sashite::PAN
 
-Ruby implementation of [PAN](http://sashite.wiki/Portable_Action_Notation) parser and emitter.
+Ruby implementation of [PAN](http://www.sashite.com/developer/wiki/Portable-Action-Notation) parser and emitter.
 
 ## Status
 
