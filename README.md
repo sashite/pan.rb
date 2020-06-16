@@ -1,18 +1,14 @@
-# Sashite::PAN
+# Portable Action Notation
 
-Ruby implementation of [PAN](http://www.sashite.com/developer/wiki/Portable-Action-Notation) parser and emitter.
-
-## Status
-
-* [![Gem Version](https://badge.fury.io/rb/sashite-pan.svg)](//badge.fury.io/rb/sashite-pan)
-* [![Build Status](https://secure.travis-ci.org/sashite/pan.rb.svg?branch=master)](//travis-ci.org/sashite/pan.rb?branch=master)
-* [![Dependency Status](https://gemnasium.com/sashite/pan.rb.svg)](//gemnasium.com/sashite/pan.rb)
+A Ruby interface for data serialization in [PAN](https://developer.sashite.com/specs/portable-action-notation) format.
 
 ## Installation
 
 Add this line to your application's Gemfile:
 
-    gem 'sashite-pan'
+```ruby
+gem 'sashite-pan'
+```
 
 And then execute:
 
@@ -22,42 +18,62 @@ Or install it yourself as:
 
     $ gem install sashite-pan
 
-## API
+## Usage
 
-Module method:
-
-```ruby
-Sashite::PAN.load verb, arg1, arg2
-```
-
-Set actor's instance methods:
-
-* `verb`
-* `actor`
-* `square`
-* `to_a`
-
-Movement's instance methods:
-
-* `verb`
-* `src_square`
-* `dst_square`
-* `to_a`
-
-## Example
+Working with PMN can be very simple, for example:
 
 ```ruby
-require 'sashite-pan'
-
-action = Sashite::PAN.load :shift, 42, 43
-action.src_square # => 42
-action.to_a       # => [ :shift, 42, 43 ]
+require 'sashite/pan'
 ```
 
-## Contributing
+### King's Pawn opening at chess
 
-1. Fork it
-2. Create your feature branch (`git checkout -b my-new-feature`)
-3. Commit your changes (`git commit -am 'Add some feature'`)
-4. Push to the branch (`git push origin my-new-feature`)
-5. Create new Pull Request
+```ruby
+Sashite::PAN.parse('52,36,♙') # => [[52, 36, '♙', nil]]
+Sashite::PAN.dump([52, 36, '♙', nil]) # => '52,36,♙'
+```
+
+### Black castles on king-side
+
+```ruby
+Sashite::PAN.parse('60,62,♔;63,61,♖') # => [[60, 62, '♔', nil], [63, 61, '♖', nil]]
+Sashite::PAN.dump([60, 62, '♔', nil], [63, 61, '♖', nil]) # => '60,62,♔;63,61,♖'
+```
+
+### Promoting a chess pawn into a knight
+
+```ruby
+Sashite::PAN.parse('12,4,♘') # => [[12, 4, '♘', nil]]
+Sashite::PAN.dump([12, 4, '♘', nil]) # => '12,4,♘'
+```
+
+### Capturing a rook and promoting a shogi pawn
+
+```ruby
+Sashite::PAN.parse('33,24,+P,R') # => [[33, 24, '+P', 'R']]
+Sashite::PAN.dump([33, 24, '+P', 'R']) # => '33,24,+P,R'
+```
+
+### Dropping a shogi pawn
+
+```ruby
+Sashite::PAN.parse('*,42,P') # => [[nil, 42, 'P', nil]]
+Sashite::PAN.dump([nil, 42, 'P', nil]) # => '*,42,P'
+```
+
+### Capturing a white chess pawn _en passant_
+
+```ruby
+Sashite::PAN.parse('33,32,♟;32,40,♟') # => [[33, 32, '♟', nil], [32, 40, '♟', nil]]
+Sashite::PAN.dump([33, 32, '♟', nil], [32, 40, '♟', nil]) # => '33,32,♟;32,40,♟'
+```
+
+## License
+
+The gem is available as open source under the terms of the [MIT License](https://opensource.org/licenses/MIT).
+
+## About Sashite
+
+The `sashite-pan` gem is maintained by [Sashite](https://sashite.com/).
+
+With some [lines of code](https://github.com/sashite/), let's share the beauty of Chinese, Japanese and Western cultures through the game of chess!
