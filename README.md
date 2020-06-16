@@ -20,7 +20,7 @@ Or install it yourself as:
 
 ## Usage
 
-Working with PMN can be very simple, for example:
+Working with PAN can be very simple, for example:
 
 ```ruby
 require 'sashite/pan'
