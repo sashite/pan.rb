@@ -24,48 +24,47 @@ Working with PAN can be very simple, for example:
 
 ```ruby
 require 'sashite/pan'
-```
 
-### King's Pawn opening at chess
+# Emit a PAN string
 
-```ruby
+actions = [
+  [52, 36, '♙', nil]
+]
+
+Sashite::PAN.dump(*actions) # => '52,36,♙'
+
+# Parse a PAN string
+
 Sashite::PAN.parse('52,36,♙') # => [[52, 36, '♙', nil]]
-Sashite::PAN.dump([52, 36, '♙', nil]) # => '52,36,♙'
 ```
 
-### Black castles on king-side
+## Examples
 
 ```ruby
-Sashite::PAN.parse('60,62,♔;63,61,♖') # => [[60, 62, '♔', nil], [63, 61, '♖', nil]]
+# Black castles on king-side
+
 Sashite::PAN.dump([60, 62, '♔', nil], [63, 61, '♖', nil]) # => '60,62,♔;63,61,♖'
-```
+Sashite::PAN.parse('60,62,♔;63,61,♖') # => [[60, 62, '♔', nil], [63, 61, '♖', nil]]
 
-### Promoting a chess pawn into a knight
+# Promoting a chess pawn into a knight
 
-```ruby
-Sashite::PAN.parse('12,4,♘') # => [[12, 4, '♘', nil]]
 Sashite::PAN.dump([12, 4, '♘', nil]) # => '12,4,♘'
-```
+Sashite::PAN.parse('12,4,♘') # => [[12, 4, '♘', nil]]
 
-### Capturing a rook and promoting a shogi pawn
+# Capturing a rook and promoting a shogi pawn
 
-```ruby
-Sashite::PAN.parse('33,24,+P,R') # => [[33, 24, '+P', 'R']]
 Sashite::PAN.dump([33, 24, '+P', 'R']) # => '33,24,+P,R'
-```
+Sashite::PAN.parse('33,24,+P,R') # => [[33, 24, '+P', 'R']]
 
-### Dropping a shogi pawn
+# Dropping a shogi pawn
 
-```ruby
-Sashite::PAN.parse('*,42,P') # => [[nil, 42, 'P', nil]]
 Sashite::PAN.dump([nil, 42, 'P', nil]) # => '*,42,P'
-```
+Sashite::PAN.parse('*,42,P') # => [[nil, 42, 'P', nil]]
 
-### Capturing a white chess pawn _en passant_
+# Capturing a white chess pawn en passant
 
-```ruby
-Sashite::PAN.parse('33,32,♟;32,40,♟') # => [[33, 32, '♟', nil], [32, 40, '♟', nil]]
 Sashite::PAN.dump([33, 32, '♟', nil], [32, 40, '♟', nil]) # => '33,32,♟;32,40,♟'
+Sashite::PAN.parse('33,32,♟;32,40,♟') # => [[33, 32, '♟', nil], [32, 40, '♟', nil]]
 ```
 
 ## License
