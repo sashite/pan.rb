@@ -7,8 +7,8 @@ module Sashite
       Dumper.call(*actions)
     end
 
-    def self.parse(pan_string)
-      Parser.call(pan_string)
+    def self.parse(string)
+      Parser.call(string)
     end
   end
 end

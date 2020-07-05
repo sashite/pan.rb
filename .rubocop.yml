@@ -4,6 +4,12 @@ require:
   - rubocop-performance
   - rubocop-thread_safety
 
+Naming/FileName:
+  Enabled: false
+
+Metrics/AbcSize:
+  Enabled: false
+
 Layout/EmptyLinesAroundAttributeAccessor:
   Enabled: true
 
@@ -41,4 +47,7 @@ Style/HashTransformKeys:
   Enabled: true
 
 Style/HashTransformValues:
+  Enabled: true
+
+Style/RedundantFetchBlock:
   Enabled: true

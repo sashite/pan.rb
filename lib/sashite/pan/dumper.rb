@@ -7,29 +7,19 @@ module Sashite
     # Dumper class
     class Dumper < Action
       def self.call(*actions)
-        actions.map { |action_items| new(*action_items).call }.join(';')
+        actions.map { |action_items| new(*action_items).call }
+               .join(separator)
       end
 
       def initialize(src_square, dst_square, piece_name, piece_hand)
-        unless src_square.nil?
-          raise TypeError, src_square.inspect unless src_square.is_a?(Integer)
-        end
-
-        raise TypeError, dst_square.inspect unless dst_square.is_a?(Integer)
-        raise TypeError, piece_name.inspect unless piece_name.is_a?(String)
-
-        unless piece_hand.nil?
-          raise TypeError, piece_hand.inspect unless piece_hand.is_a?(String)
-        end
-
-        @src_square = (src_square.nil? ? '*' : src_square)
-        @dst_square = dst_square
-        @piece_name = piece_name
-        @piece_hand = piece_hand
+        @src_square = src_square.nil? ? drop_char : Integer(src_square)
+        @dst_square = Integer(dst_square)
+        @piece_name = piece_name.to_s
+        @piece_hand = piece_hand&.to_s
       end
 
       def call
-        action_items.join(',')
+        action_items.join(separator)
       end
 
       private
