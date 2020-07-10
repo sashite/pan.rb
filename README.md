@@ -1,5 +1,7 @@
 # Portable Action Notation
 
+[![Build Status](https://travis-ci.org/sashite/pan.rb.svg?branch=master)](https://travis-ci.org/sashite/pan.rb)
+
 A Ruby interface for data serialization in [PAN](https://developer.sashite.com/specs/portable-action-notation) format.
 
 ## Installation
