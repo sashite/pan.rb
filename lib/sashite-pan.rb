@@ -3,4 +3,4 @@
 # Sashite namespace
 module Sashite; end
 
-require_relative 'sashite/pan'
+require_relative "sashite/pan"

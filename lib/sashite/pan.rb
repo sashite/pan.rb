@@ -13,5 +13,5 @@ module Sashite
   end
 end
 
-require_relative 'pan/dumper'
-require_relative 'pan/parser'
+require_relative "pan/dumper"
+require_relative "pan/parser"

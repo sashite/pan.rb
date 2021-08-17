@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative 'action'
+require_relative "action"
 
 module Sashite
   module PAN
@@ -12,6 +12,8 @@ module Sashite
       end
 
       def initialize(serialized_action)
+        super()
+
         action_args = serialized_action.split(separator)
         src_square  = action_args.fetch(0)
         @src_square = src_square.eql?(drop_char) ? nil : Integer(src_square)
