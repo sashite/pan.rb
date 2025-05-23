@@ -1,4 +1,4 @@
-Copyright (c) 2014-2021 Cyril Kato
+Copyright (c) 2014-2025 Cyril Kato
 
 MIT License
 
