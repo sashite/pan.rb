@@ -1,89 +1,103 @@
 # frozen_string_literal: true
 
-require_relative "parser/error"
-
 module Sashite
   module Pan
     # Parser for Portable Action Notation (PAN) strings
     module Parser
-      # Parse a PAN string into PMN format
+      class Error < ::StandardError
+      end
+
+      # Regular expression pattern for validating PAN strings
+      PAN_PATTERN = /\A(\*|[a-z][0-9][-x])([a-z][0-9])\z/
+
+      # Parse a PAN string into structured move data
       #
       # @param pan_string [String] The PAN string to parse
-      # @return [Array<Hash>] Array of PMN action objects
+      # @return [Hash] Structured move data with type, source, and destination
       # @raise [Parser::Error] If the PAN string is invalid
       def self.call(pan_string)
         raise Parser::Error, "PAN string cannot be nil" if pan_string.nil?
+        raise Parser::Error, "PAN string must be a String" unless pan_string.is_a?(::String)
         raise Parser::Error, "PAN string cannot be empty" if pan_string.empty?
 
-        actions = pan_string.split(";").map(&:strip)
-        raise Parser::Error, "No actions found" if actions.empty?
-
-        actions.map { |action| parse_action(action) }
+        validate_format(pan_string)
+        parse_move(pan_string)
       end
 
       private
 
-      # Parse a single action string into a PMN action hash
+      # Validate the basic format of a PAN string
       #
-      # @param action_string [String] Single action in PAN format
-      # @return [Hash] PMN action object
-      # @raise [Parser::Error] If the action is invalid
-      def self.parse_action(action_string)
-        components = action_string.split(",").map(&:strip)
-
-        validate_action_components(components)
-
-        {
-          "src_square" => parse_source_square(components[0]),
-          "dst_square" => components[1],
-          "piece_name" => components[2],
-          "piece_hand" => components[3] || nil
-        }.compact
-      end
-
-      # Validate action components structure
-      #
-      # @param components [Array<String>] Components of the action
-      # @raise [Parser::Error] If components are invalid
-      def self.validate_action_components(components)
-        case components.length
-        when 0, 1, 2
-          raise Parser::Error, "Action must have at least 3 components (source, destination, piece)"
-        when 3, 4
-          # Valid number of components
-        else
-          raise Parser::Error, "Action cannot have more than 4 components"
+      # @param pan_string [String] The PAN string to validate
+      # @raise [Parser::Error] If format is invalid
+      def self.validate_format(pan_string)
+        unless pan_string.match?(PAN_PATTERN)
+          raise Parser::Error, "Invalid PAN format: #{pan_string}"
         end
 
-        components.each_with_index do |component, index|
-          if component.nil? || component.empty?
-            raise Parser::Error, "Component #{index} cannot be empty"
+        # Additional validation for source != destination in moves and captures
+        if pan_string.include?('-') || pan_string.include?('x')
+          source = pan_string[0..1]
+          destination = pan_string[-2..-1]
+          if source == destination
+            raise Parser::Error, "Source and destination cannot be identical: #{source}"
           end
         end
-
-        validate_piece_identifier(components[2])
-        validate_piece_identifier(components[3]) if components[3]
       end
 
-      # Parse source square, handling drop notation
+      # Parse the move based on its type
       #
-      # @param source [String] Source square or "*" for drop
-      # @return [String, nil] Square identifier or nil for drops
-      def self.parse_source_square(source)
-        source == "*" ? nil : source
-      end
-
-      # Validate piece identifier follows PNN specification
-      #
-      # @param piece [String] Piece identifier to validate
-      # @raise [Parser::Error] If piece identifier is invalid
-      def self.validate_piece_identifier(piece)
-        return if piece.nil?
-
-        # PNN pattern: optional prefix (+/-), letter (a-z/A-Z), optional suffix (')
-        unless piece.match?(/\A[-+]?[a-zA-Z][']?\z/)
-          raise Parser::Error, "Invalid piece identifier: #{piece}"
+      # @param pan_string [String] The validated PAN string
+      # @return [Hash] Structured move data
+      def self.parse_move(pan_string)
+        case pan_string
+        when /\A([a-z][0-9])-([a-z][0-9])\z/
+          parse_simple_move($1, $2)
+        when /\A([a-z][0-9])x([a-z][0-9])\z/
+          parse_capture_move($1, $2)
+        when /\A\*([a-z][0-9])\z/
+          parse_drop_move($1)
+        else
+          # This should never happen due to earlier validation
+          raise Parser::Error, "Unexpected PAN format: #{pan_string}"
         end
+      end
+
+      # Parse a simple move (non-capture)
+      #
+      # @param source [String] Source coordinate
+      # @param destination [String] Destination coordinate
+      # @return [Hash] Move data for simple move
+      def self.parse_simple_move(source, destination)
+        {
+          type: :move,
+          source: source,
+          destination: destination
+        }
+      end
+
+      # Parse a capture move
+      #
+      # @param source [String] Source coordinate
+      # @param destination [String] Destination coordinate
+      # @return [Hash] Move data for capture move
+      def self.parse_capture_move(source, destination)
+        {
+          type: :capture,
+          source: source,
+          destination: destination
+        }
+      end
+
+      # Parse a drop/placement move
+      #
+      # @param destination [String] Destination coordinate
+      # @return [Hash] Move data for drop move
+      def self.parse_drop_move(destination)
+        {
+          type: :drop,
+          destination: destination
+        }
       end
     end
   end

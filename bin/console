@@ -2,7 +2,7 @@
 # frozen_string_literal: true
 
 require "bundler/setup"
-require "sashite/pan"
+require "sashite-pan"
 require "irb"
 
 IRB.start(__FILE__)

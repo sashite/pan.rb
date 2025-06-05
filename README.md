@@ -9,16 +9,15 @@
 
 ## What is PAN?
 
-PAN (Portable Action Notation) is a compact, string-based format for representing **executed moves** in abstract strategy board games. PAN serves as a human-readable and space-efficient alternative to PMN (Portable Move Notation), expressing the same semantic information in a condensed textual format.
+PAN (Portable Action Notation) is a compact, string-based format for representing **executed moves** in abstract strategy board games played on coordinate-based boards. PAN provides a human-readable and space-efficient notation for expressing move actions in a rule-agnostic manner.
 
-While PMN uses JSON arrays to describe move sequences, PAN encodes the same information using a delimited string format that is easier to read, write, and transmit in contexts where JSON overhead is undesirable.
+PAN focuses on representing the spatial aspects of moves: where pieces move from and to, and whether the move involves capture or placement. The notation is designed to be intuitive and compatible with standard algebraic coordinate systems.
 
 This gem implements the [PAN Specification v1.0.0](https://sashite.dev/documents/pan/1.0.0/), providing a Ruby interface for:
 
-- Converting between PAN strings and PMN format
 - Parsing PAN strings into structured move data
-- Creating PAN strings from move components
 - Validating PAN strings according to the specification
+- Converting between PAN and other move representations
 
 ## Installation
 
@@ -35,54 +34,54 @@ gem install sashite-pan
 
 ## PAN Format
 
-A PAN string represents one or more **actions** that constitute a complete move in a game. The format structure is:
+PAN uses three fundamental move types with intuitive operators:
 
-### Single Action
-
+### Simple Move (Non-capture)
 ```
-<source>,<destination>,<piece>[,<hand_piece>]
+<source>-<destination>
 ```
+**Example**: `e2-e4` - Moves a piece from e2 to e4
 
-### Multiple Actions
-
+### Capture Move
 ```
-<action1>;<action2>[;<action3>...]
+<source>x<destination>
 ```
+**Example**: `e4xd5` - Moves a piece from e4 to d5, capturing the piece at d5
 
-Where:
+### Drop/Placement
+```
+*<destination>
+```
+**Example**: `*e4` - Places a piece at e4 from off-board (hand, reserve, etc.)
 
-- **source**: Origin square label, or `*` for drops from hand
-- **destination**: Target square label
-- **piece**: Piece being moved (PNN format with optional modifiers)
-- **hand_piece**: Optional piece added to mover's hand (captures, promotions)
+### Coordinate System
+
+PAN uses algebraic coordinates consisting of:
+- **File**: A single lowercase letter (`a-z`)
+- **Rank**: A single digit (`0-9`)
+
+Examples: `e4`, `a1`, `h8`, `d5`
 
 ## Basic Usage
 
 ### Parsing PAN Strings
 
-Convert a PAN string into PMN format (array of action hashes):
+Convert a PAN string into structured move data:
 
 ```ruby
 require "sashite-pan"
 
 # Simple move
-result = Sashite::Pan.parse("27,18,+P")
-# => [{"src_square"=>"27", "dst_square"=>"18", "piece_name"=>"+P"}]
+result = Sashite::Pan.parse("e2-e4")
+# => {type: :move, source: "e2", destination: "e4"}
 
-# Capture with hand piece
-result = Sashite::Pan.parse("36,27,B,P")
-# => [{"src_square"=>"36", "dst_square"=>"27", "piece_name"=>"B", "piece_hand"=>"P"}]
+# Capture
+result = Sashite::Pan.parse("e4xd5")
+# => {type: :capture, source: "e4", destination: "d5"}
 
 # Drop from hand
-result = Sashite::Pan.parse("*,27,p")
-# => [{"src_square"=>nil, "dst_square"=>"27", "piece_name"=>"p"}]
-
-# Multiple actions (castling)
-result = Sashite::Pan.parse("e1,g1,K;h1,f1,R")
-# => [
-#   {"src_square"=>"e1", "dst_square"=>"g1", "piece_name"=>"K"},
-#   {"src_square"=>"h1", "dst_square"=>"f1", "piece_name"=>"R"}
-# ]
+result = Sashite::Pan.parse("*e4")
+# => {type: :drop, destination: "e4"}
 ```
 
 ### Safe Parsing
@@ -93,60 +92,11 @@ Parse a PAN string without raising exceptions:
 require "sashite-pan"
 
 # Valid PAN string
-result = Sashite::Pan.safe_parse("e2,e4,P'")
-# => [{"src_square"=>"e2", "dst_square"=>"e4", "piece_name"=>"P'"}]
+result = Sashite::Pan.safe_parse("e2-e4")
+# => {type: :move, source: "e2", destination: "e4"}
 
 # Invalid PAN string
-result = Sashite::Pan.safe_parse("invalid pan string")
-# => nil
-```
-
-### Creating PAN Strings
-
-Convert PMN actions (array of hashes) into a PAN string:
-
-```ruby
-require "sashite-pan"
-
-# Simple move
-pmn_actions = [{"src_square" => "27", "dst_square" => "18", "piece_name" => "+P"}]
-pan_string = Sashite::Pan.dump(pmn_actions)
-# => "27,18,+P"
-
-# Capture with hand piece
-pmn_actions = [{"src_square" => "36", "dst_square" => "27", "piece_name" => "B", "piece_hand" => "P"}]
-pan_string = Sashite::Pan.dump(pmn_actions)
-# => "36,27,B,P"
-
-# Drop from hand
-pmn_actions = [{"src_square" => nil, "dst_square" => "27", "piece_name" => "p"}]
-pan_string = Sashite::Pan.dump(pmn_actions)
-# => "*,27,p"
-
-# Multiple actions (castling)
-pmn_actions = [
-  {"src_square" => "e1", "dst_square" => "g1", "piece_name" => "K"},
-  {"src_square" => "h1", "dst_square" => "f1", "piece_name" => "R"}
-]
-pan_string = Sashite::Pan.dump(pmn_actions)
-# => "e1,g1,K;h1,f1,R"
-```
-
-### Safe Dumping
-
-Create PAN strings without raising exceptions:
-
-```ruby
-require "sashite-pan"
-
-# Valid PMN data
-pmn_actions = [{"src_square" => "e2", "dst_square" => "e4", "piece_name" => "P"}]
-result = Sashite::Pan.safe_dump(pmn_actions)
-# => "e2,e4,P"
-
-# Invalid PMN data
-invalid_data = [{"invalid" => "data"}]
-result = Sashite::Pan.safe_dump(invalid_data)
+result = Sashite::Pan.safe_parse("invalid")
 # => nil
 ```
 
@@ -157,109 +107,87 @@ Check if a string is valid PAN notation:
 ```ruby
 require "sashite-pan"
 
-Sashite::Pan.valid?("27,18,+P")           # => true
-Sashite::Pan.valid?("*,27,p")             # => true
-Sashite::Pan.valid?("e1,g1,K;h1,f1,R")   # => true
+Sashite::Pan.valid?("e2-e4")    # => true
+Sashite::Pan.valid?("*e4")      # => true
+Sashite::Pan.valid?("e4xd5")    # => true
 
-Sashite::Pan.valid?("")                   # => false
-Sashite::Pan.valid?("invalid")            # => false
-Sashite::Pan.valid?("27,18")              # => false (missing piece)
+Sashite::Pan.valid?("")         # => false
+Sashite::Pan.valid?("e2-e2")    # => false (source equals destination)
+Sashite::Pan.valid?("E2-e4")    # => false (uppercase file)
+Sashite::Pan.valid?("e2 - e4")  # => false (spaces not allowed)
 ```
 
 ## Examples
-
-### Shogi Examples
-
-```ruby
-require "sashite-pan"
-
-# Pawn promotion
-Sashite::Pan.parse("27,18,+P")
-# => [{"src_square"=>"27", "dst_square"=>"18", "piece_name"=>"+P"}]
-
-# Bishop captures promoted pawn
-Sashite::Pan.parse("36,27,B,P")
-# => [{"src_square"=>"36", "dst_square"=>"27", "piece_name"=>"B", "piece_hand"=>"P"}]
-
-# Drop pawn from hand
-Sashite::Pan.parse("*,27,p")
-# => [{"src_square"=>nil, "dst_square"=>"27", "piece_name"=>"p"}]
-```
 
 ### Chess Examples
 
 ```ruby
 require "sashite-pan"
 
-# Kingside castling
-Sashite::Pan.parse("e1,g1,K;h1,f1,R")
-# => [
-#   {"src_square"=>"e1", "dst_square"=>"g1", "piece_name"=>"K"},
-#   {"src_square"=>"h1", "dst_square"=>"f1", "piece_name"=>"R"}
-# ]
+# Pawn advance
+Sashite::Pan.parse("e2-e4")
+# => {type: :move, source: "e2", destination: "e4"}
 
-# Pawn with state modifier (can be captured en passant)
-Sashite::Pan.parse("e2,e4,P'")
-# => [{"src_square"=>"e2", "dst_square"=>"e4", "piece_name"=>"P'"}]
+# Capture
+Sashite::Pan.parse("exd5")
+# => {type: :capture, source: "e4", destination: "d5"}
 
-# En passant capture (multi-step)
-Sashite::Pan.parse("d4,e3,p;e3,e4,p")
-# => [
-#   {"src_square"=>"d4", "dst_square"=>"e3", "piece_name"=>"p"},
-#   {"src_square"=>"e3", "dst_square"=>"e4", "piece_name"=>"p"}
-# ]
+# Note: PAN cannot distinguish piece types or promotion choices
+# These moves require game context for complete interpretation:
+Sashite::Pan.parse("e7-e8")  # Could be pawn promotion to any piece
+Sashite::Pan.parse("a1-a8")  # Could be rook, queen, or promoted piece
 ```
 
-## Integration with PMN
-
-PAN is designed to work seamlessly with PMN (Portable Move Notation). You can easily convert between the two formats:
+### Shogi Examples
 
 ```ruby
 require "sashite-pan"
-require "portable_move_notation"
 
-# Start with a PAN string
-pan_string = "e2,e4,P';d7,d5,p"
+# Piece movement
+Sashite::Pan.parse("g7-f7")
+# => {type: :move, source: "g7", destination: "f7"}
 
-# Convert to PMN format
-pmn_actions = Sashite::Pan.parse(pan_string)
-# => [
-#   {"src_square"=>"e2", "dst_square"=>"e4", "piece_name"=>"P'"},
-#   {"src_square"=>"d7", "dst_square"=>"d5", "piece_name"=>"p"}
-# ]
+# Drop from hand
+Sashite::Pan.parse("*e5")
+# => {type: :drop, destination: "e5"}
 
-# Use with PMN library
-move = PortableMoveNotation::Move.new(*pmn_actions.map { |action|
-  PortableMoveNotation::Action.new(**action.transform_keys(&:to_sym))
-})
+# Capture (captured piece goes to hand in Shogi)
+Sashite::Pan.parse("h2xg2")
+# => {type: :capture, source: "h2", destination: "g2"}
 
-# Convert back to PAN
-new_pan_string = Sashite::Pan.dump(pmn_actions)
-# => "e2,e4,P';d7,d5,p"
+# Note: PAN cannot specify which piece type is being dropped
+# or whether a piece is promoted
 ```
 
-## Use Cases
+## Limitations and Context Dependency
 
-PAN is optimal for:
+**Important**: PAN is intentionally minimal and rule-agnostic. It has several important limitations:
 
-- **Move logging and game records**: Compact storage of game moves
-- **Network transmission**: Efficient move data transmission
-- **Command-line interfaces**: Human-readable move input/output
-- **Quick manual entry**: Easy to type and edit move sequences
-- **Storage optimization**: Space-efficient alternative to JSON
+### What PAN Cannot Represent
 
-PMN is optimal for:
+- **Piece types**: Cannot distinguish between different pieces making the same move
+- **Promotion choices**: Cannot specify what piece a pawn promotes to
+- **Game state**: No encoding of check, checkmate, or game conditions
+- **Complex moves**: Castling requires external representation
+- **Piece identity**: Multiple pieces of the same type making similar moves
 
-- **Programmatic analysis**: Complex move processing and validation
-- **JSON-based systems**: Direct integration with JSON APIs
-- **Structured data processing**: Schema validation and type checking
+### Examples of Ambiguity
 
-## Properties of PAN
+```ruby
+# These PAN strings are syntactically valid but may be ambiguous:
 
-- **Rule-agnostic**: PAN does not encode legality, validity, or game-specific conditions
-- **Space-efficient**: Significantly more compact than equivalent JSON representation
-- **Human-readable**: Easy to read, write, and understand
-- **Lossless conversion**: Perfect bidirectional conversion with PMN format
+"e7-e8"    # Pawn promotion - but to what piece?
+"*g4"      # Drop - but which piece from hand?
+"a1-a8"    # Movement - but which piece type?
+"e1-g1"    # Could be castling, but rook movement not shown
+```
+
+### When PAN is Insufficient
+
+- Games where multiple pieces can make the same spatial move
+- Games requiring promotion choice specification
+- Analysis requiring piece type identification
+- Self-contained game records without context
 
 ## Error Handling
 
@@ -269,23 +197,82 @@ The library provides detailed error messages for invalid input:
 require "sashite-pan"
 
 begin
-  Sashite::Pan.parse("invalid,pan")  # Missing piece component
+  Sashite::Pan.parse("e2-e2")  # Source equals destination
 rescue Sashite::Pan::Parser::Error => e
-  puts e.message  # => "Action must have at least 3 components (source, destination, piece)"
+  puts e.message  # => "Source and destination cannot be identical"
 end
 
 begin
-  Sashite::Pan.dump([{"invalid" => "data"}])  # Missing required fields
-rescue Sashite::Pan::Dumper::Error => e
-  puts e.message  # => "Action must have dst_square"
+  Sashite::Pan.parse("E2-e4")  # Invalid uppercase file
+rescue Sashite::Pan::Parser::Error => e
+  puts e.message  # => "Invalid PAN format: E2-e4"
+end
+
+begin
+  Sashite::Pan.parse("")  # Empty string
+rescue Sashite::Pan::Parser::Error => e
+  puts e.message  # => "PAN string cannot be empty"
 end
 ```
+
+## Regular Expression Pattern
+
+PAN strings can be validated using this pattern:
+
+```ruby
+PAN_PATTERN = /\A(\*|[a-z][0-9][-x])([a-z][0-9])\z/
+
+def valid_pan?(string)
+  return false unless string.match?(PAN_PATTERN)
+
+  # Additional validation for source != destination
+  if string.include?('-') || string.include?('x')
+    source = string[0..1]
+    destination = string[-2..-1]
+    return source != destination
+  end
+
+  true
+end
+```
+
+## Use Cases
+
+### Optimal for PAN
+
+- **Move logs**: Simple game records where context is available
+- **User interfaces**: Command input for move entry
+- **Network protocols**: Compact move transmission
+- **Quick notation**: Manual notation for simple games
+
+### Consider Alternatives When
+
+- **Ambiguous games**: Multiple pieces can make the same spatial move
+- **Complex promotions**: Games with multiple promotion choices
+- **Analysis tools**: When piece identity is crucial
+- **Self-contained records**: When context is not available
+
+## Integration Considerations
+
+When using PAN in your applications:
+
+1. **Always pair with context**: Store board state alongside PAN moves
+2. **Document assumptions**: Clearly specify how ambiguities are resolved
+3. **Validate rigorously**: Check both syntax and semantic validity
+4. **Handle edge cases**: Plan for promotion and drop ambiguities
+
+## Properties of PAN
+
+- **Rule-agnostic**: Does not encode piece types, legality, or game-specific conditions
+- **Compact**: Minimal character overhead (3-5 characters per move)
+- **Human-readable**: Intuitive algebraic notation
+- **Space-efficient**: Excellent for large game databases
+- **Context-dependent**: Requires external game state for complete interpretation
 
 ## Documentation
 
 - [Official PAN Specification](https://sashite.dev/documents/pan/1.0.0/)
 - [API Documentation](https://rubydoc.info/github/sashite/pan.rb/main)
-- [PMN Specification](https://sashite.dev/documents/pmn/1.0.0/)
 
 ## License
 
