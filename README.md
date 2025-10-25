@@ -5,19 +5,13 @@
 ![Ruby](https://github.com/sashite/pan.rb/actions/workflows/main.yml/badge.svg?branch=main)
 [![License](https://img.shields.io/github/license/sashite/pan.rb?label=License&logo=github)](https://github.com/sashite/pan.rb/raw/main/LICENSE.md)
 
-> **PAN** (Portable Action Notation) support for the Ruby language.
+> **PAN** (Portable Action Notation) implementation for the Ruby language.
 
 ## What is PAN?
 
-PAN (Portable Action Notation) is a compact, string-based format for representing **executed moves** in abstract strategy board games played on coordinate-based boards. PAN provides a human-readable and space-efficient notation for expressing move actions in a rule-agnostic manner.
+PAN (Portable Action Notation) is a human-readable string format for representing atomic actions in abstract strategy board games. PAN provides an intuitive operator-based syntax to describe how pieces move, capture, transform, and interact on game boards.
 
-PAN focuses on representing the spatial aspects of moves: where pieces move from and to, and whether the move involves capture or placement. The notation is designed to be intuitive and compatible with standard algebraic coordinate systems.
-
-This gem implements the [PAN Specification v1.0.0](https://sashite.dev/documents/pan/1.0.0/), providing a Ruby interface for:
-
-- Parsing PAN strings into structured move data
-- Validating PAN strings according to the specification
-- Converting between PAN and other move representations
+This gem implements the [PAN Specification v1.0.0](https://sashite.dev/specs/pan/1.0.0/), providing a pure functional Ruby interface with immutable action objects.
 
 ## Installation
 
@@ -32,252 +26,607 @@ Or install manually:
 gem install sashite-pan
 ```
 
-## PAN Format
-
-PAN uses three fundamental move types with intuitive operators:
-
-### Simple Move (Non-capture)
-```
-<source>-<destination>
-```
-**Example**: `e2-e4` - Moves a piece from e2 to e4
-
-### Capture Move
-```
-<source>x<destination>
-```
-**Example**: `e4xd5` - Moves a piece from e4 to d5, capturing the piece at d5
-
-### Drop/Placement
-```
-*<destination>
-```
-**Example**: `*e4` - Places a piece at e4 from off-board (hand, reserve, etc.)
-
-### Coordinate System
-
-PAN uses algebraic coordinates consisting of:
-- **File**: A single lowercase letter (`a-z`)
-- **Rank**: A single digit (`0-9`)
-
-Examples: `e4`, `a1`, `h8`, `d5`
-
-## Basic Usage
-
-### Parsing PAN Strings
-
-Convert a PAN string into structured move data:
+## Quick Start
 
 ```ruby
-require "sashite-pan"
+require "sashite/pan"
 
-# Simple move
-result = Sashite::Pan.parse("e2-e4")
-# => {type: :move, source: "e2", destination: "e4"}
+# Validate PAN strings
+Sashite::Pan.valid?("e2-e4")      # => true
+Sashite::Pan.valid?("d1+f3")      # => true
+Sashite::Pan.valid?("...")        # => true
+Sashite::Pan.valid?("invalid")    # => false
 
-# Capture
-result = Sashite::Pan.parse("e4xd5")
-# => {type: :capture, source: "e4", destination: "d5"}
+# Parse PAN strings into action objects
+action = Sashite::Pan.parse("e2-e4")
+action.type          # => :move
+action.source        # => "e2"
+action.destination   # => "e4"
+action.to_s          # => "e2-e4"
 
-# Drop from hand
-result = Sashite::Pan.parse("*e4")
-# => {type: :drop, destination: "e4"}
+# Create actions programmatically
+action = Sashite::Pan::Action.move("e2", "e4")
+action.to_s          # => "e2-e4"
+
+promotion = Sashite::Pan::Action.move("e7", "e8", transformation: "Q")
+promotion.to_s       # => "e7-e8=Q"
+
+capture = Sashite::Pan::Action.capture("d1", "f3")
+capture.to_s         # => "d1+f3"
+
+# Drop actions (shogi-style)
+drop = Sashite::Pan::Action.drop("e5", piece: "P")
+drop.to_s            # => "P*e5"
+
+# Pass action
+pass = Sashite::Pan::Action.pass
+pass.to_s            # => "..."
+
+# Query action properties
+action.move?         # => true
+action.pass?         # => false
+capture.capture?     # => true
 ```
 
-### Safe Parsing
+## Format Overview
 
-Parse a PAN string without raising exceptions:
+PAN uses six intuitive operators:
+
+| Operator | Meaning | Example |
+|----------|---------|---------|
+| `-` | Move to empty square | `e2-e4` |
+| `+` | Capture at destination | `d1+f3` |
+| `~` | Special move with side effects | `e1~g1` (castling) |
+| `*` | Drop to empty square | `P*e5` |
+| `.` | Drop with capture | `L.b4` |
+| `=` | Transform piece | `e4=+P` |
+| `...` | Pass turn | `...` |
+
+For complete format details, see the [PAN Specification](https://sashite.dev/specs/pan/1.0.0/).
+
+## API Reference
+
+### Module Methods
+
+#### Validation
 
 ```ruby
-require "sashite-pan"
-
-# Valid PAN string
-result = Sashite::Pan.safe_parse("e2-e4")
-# => {type: :move, source: "e2", destination: "e4"}
-
-# Invalid PAN string
-result = Sashite::Pan.safe_parse("invalid")
-# => nil
+Sashite::Pan.valid?(pan_string)
 ```
 
-### Validation
+Check if a string represents a valid PAN action.
 
-Check if a string is valid PAN notation:
+**Parameters:**
+- `pan_string` [String] - The string to validate
 
+**Returns:** [Boolean] - true if valid PAN, false otherwise
+
+**Examples:**
 ```ruby
-require "sashite-pan"
-
-Sashite::Pan.valid?("e2-e4")    # => true
-Sashite::Pan.valid?("*e4")      # => true
-Sashite::Pan.valid?("e4xd5")    # => true
-
-Sashite::Pan.valid?("")         # => false
-Sashite::Pan.valid?("e2-e2")    # => false (source equals destination)
-Sashite::Pan.valid?("E2-e4")    # => false (uppercase file)
-Sashite::Pan.valid?("e2 - e4")  # => false (spaces not allowed)
+Sashite::Pan.valid?("e2-e4")       # => true
+Sashite::Pan.valid?("P*d4")        # => true
+Sashite::Pan.valid?("...")         # => true
+Sashite::Pan.valid?("invalid")     # => false
 ```
 
-## Examples
-
-### Chess Examples
+#### Parsing
 
 ```ruby
-require "sashite-pan"
-
-# Pawn advance
-Sashite::Pan.parse("e2-e4")
-# => {type: :move, source: "e2", destination: "e4"}
-
-# Capture
-Sashite::Pan.parse("exd5")
-# => {type: :capture, source: "e4", destination: "d5"}
-
-# Note: PAN cannot distinguish piece types or promotion choices
-# These moves require game context for complete interpretation:
-Sashite::Pan.parse("e7-e8")  # Could be pawn promotion to any piece
-Sashite::Pan.parse("a1-a8")  # Could be rook, queen, or promoted piece
+Sashite::Pan.parse(pan_string)
 ```
 
-### Shogi Examples
+Parse a PAN string into an Action object.
 
+**Parameters:**
+- `pan_string` [String] - PAN notation string
+
+**Returns:** [Pan::Action] - Immutable action object
+
+**Raises:** [ArgumentError] - If the PAN string is invalid
+
+**Examples:**
 ```ruby
-require "sashite-pan"
-
-# Piece movement
-Sashite::Pan.parse("g7-f7")
-# => {type: :move, source: "g7", destination: "f7"}
-
-# Drop from hand
-Sashite::Pan.parse("*e5")
-# => {type: :drop, destination: "e5"}
-
-# Capture (captured piece goes to hand in Shogi)
-Sashite::Pan.parse("h2xg2")
-# => {type: :capture, source: "h2", destination: "g2"}
-
-# Note: PAN cannot specify which piece type is being dropped
-# or whether a piece is promoted
+Sashite::Pan.parse("e2-e4")        # => #<Pan::Action type=:move ...>
+Sashite::Pan.parse("d1+f3")        # => #<Pan::Action type=:capture ...>
+Sashite::Pan.parse("...")          # => #<Pan::Action type=:pass>
 ```
 
-## Limitations and Context Dependency
+### Action Class
 
-**Important**: PAN is intentionally minimal and rule-agnostic. It has several important limitations:
+#### Creation Methods
 
-### What PAN Cannot Represent
+All creation methods return immutable Action objects.
 
-- **Piece types**: Cannot distinguish between different pieces making the same move
-- **Promotion choices**: Cannot specify what piece a pawn promotes to
-- **Game state**: No encoding of check, checkmate, or game conditions
-- **Complex moves**: Castling requires external representation
-- **Piece identity**: Multiple pieces of the same type making similar moves
-
-### Examples of Ambiguity
+##### Pass Action
 
 ```ruby
-# These PAN strings are syntactically valid but may be ambiguous:
-
-"e7-e8"    # Pawn promotion - but to what piece?
-"*g4"      # Drop - but which piece from hand?
-"a1-a8"    # Movement - but which piece type?
-"e1-g1"    # Could be castling, but rook movement not shown
+Sashite::Pan::Action.pass
 ```
 
-### When PAN is Insufficient
+Create a pass action (no move, turn ends).
 
-- Games where multiple pieces can make the same spatial move
-- Games requiring promotion choice specification
-- Analysis requiring piece type identification
-- Self-contained game records without context
+**Returns:** [Action] - Pass action
 
-## Error Handling
+**Example:**
+```ruby
+action = Sashite::Pan::Action.pass
+action.to_s  # => "..."
+```
 
-The library provides detailed error messages for invalid input:
+##### Movement Actions
 
 ```ruby
-require "sashite-pan"
+Sashite::Pan::Action.move(source, destination, transformation: nil)
+```
 
-begin
-  Sashite::Pan.parse("e2-e2")  # Source equals destination
-rescue Sashite::Pan::Parser::Error => e
-  puts e.message  # => "Source and destination cannot be identical"
+Create a move action to an empty square.
+
+**Parameters:**
+- `source` [String] - Source CELL coordinate
+- `destination` [String] - Destination CELL coordinate
+- `transformation` [String, nil] - Optional EPIN transformation
+
+**Returns:** [Action] - Move action
+
+**Examples:**
+```ruby
+Sashite::Pan::Action.move("e2", "e4")
+# => "e2-e4"
+
+Sashite::Pan::Action.move("e7", "e8", transformation: "Q")
+# => "e7-e8=Q"
+
+Sashite::Pan::Action.move("a7", "a8", transformation: "+R")
+# => "a7-a8=+R"
+```
+
+---
+
+```ruby
+Sashite::Pan::Action.capture(source, destination, transformation: nil)
+```
+
+Create a capture action at destination.
+
+**Parameters:**
+- `source` [String] - Source CELL coordinate
+- `destination` [String] - Destination CELL coordinate (occupied square)
+- `transformation` [String, nil] - Optional EPIN transformation
+
+**Returns:** [Action] - Capture action
+
+**Examples:**
+```ruby
+Sashite::Pan::Action.capture("d1", "f3")
+# => "d1+f3"
+
+Sashite::Pan::Action.capture("b7", "a8", transformation: "R")
+# => "b7+a8=R"
+```
+
+---
+
+```ruby
+Sashite::Pan::Action.special(source, destination, transformation: nil)
+```
+
+Create a special move action with implicit side effects.
+
+**Parameters:**
+- `source` [String] - Source CELL coordinate
+- `destination` [String] - Destination CELL coordinate
+- `transformation` [String, nil] - Optional EPIN transformation
+
+**Returns:** [Action] - Special action
+
+**Examples:**
+```ruby
+Sashite::Pan::Action.special("e1", "g1")
+# => "e1~g1" (castling)
+
+Sashite::Pan::Action.special("e5", "f6")
+# => "e5~f6" (en passant)
+```
+
+##### Static Capture
+
+```ruby
+Sashite::Pan::Action.static_capture(square)
+```
+
+Create a static capture action (remove piece without movement).
+
+**Parameters:**
+- `square` [String] - CELL coordinate of piece to capture
+
+**Returns:** [Action] - Static capture action
+
+**Example:**
+```ruby
+Sashite::Pan::Action.static_capture("d4")
+# => "+d4"
+```
+
+##### Drop Actions
+
+```ruby
+Sashite::Pan::Action.drop(destination, piece: nil, transformation: nil)
+```
+
+Create a drop action to empty square.
+
+**Parameters:**
+- `destination` [String] - Destination CELL coordinate (empty square)
+- `piece` [String, nil] - Optional EPIN piece identifier
+- `transformation` [String, nil] - Optional EPIN transformation
+
+**Returns:** [Action] - Drop action
+
+**Examples:**
+```ruby
+Sashite::Pan::Action.drop("e5", piece: "P")
+# => "P*e5"
+
+Sashite::Pan::Action.drop("d4")
+# => "*d4" (piece type inferred from context)
+
+Sashite::Pan::Action.drop("c3", piece: "S", transformation: "+S")
+# => "S*c3=+S"
+```
+
+---
+
+```ruby
+Sashite::Pan::Action.drop_capture(destination, piece: nil, transformation: nil)
+```
+
+Create a drop action with capture.
+
+**Parameters:**
+- `destination` [String] - Destination CELL coordinate (occupied square)
+- `piece` [String, nil] - Optional EPIN piece identifier
+- `transformation` [String, nil] - Optional EPIN transformation
+
+**Returns:** [Action] - Drop capture action
+
+**Example:**
+```ruby
+Sashite::Pan::Action.drop_capture("b4", piece: "L")
+# => "L.b4"
+```
+
+##### Modification Action
+
+```ruby
+Sashite::Pan::Action.modify(square, piece)
+```
+
+Create an in-place transformation action.
+
+**Parameters:**
+- `square` [String] - CELL coordinate
+- `piece` [String] - EPIN piece identifier (final state)
+
+**Returns:** [Action] - Modification action
+
+**Examples:**
+```ruby
+Sashite::Pan::Action.modify("e4", "+P")
+# => "e4=+P"
+
+Sashite::Pan::Action.modify("c3", "k'")
+# => "c3=k'"
+```
+
+#### Instance Methods
+
+##### Attribute Access
+
+```ruby
+action.type
+```
+
+Get the action type.
+
+**Returns:** [Symbol] - One of: `:pass`, `:move`, `:capture`, `:special`, `:static_capture`, `:drop`, `:drop_capture`, `:modify`
+
+---
+
+```ruby
+action.source
+```
+
+Get the source coordinate (for movement actions).
+
+**Returns:** [String, nil] - CELL coordinate or nil
+
+---
+
+```ruby
+action.destination
+```
+
+Get the destination coordinate.
+
+**Returns:** [String, nil] - CELL coordinate or nil
+
+---
+
+```ruby
+action.piece
+```
+
+Get the piece identifier (for drop/modify actions).
+
+**Returns:** [String, nil] - EPIN identifier or nil
+
+---
+
+```ruby
+action.transformation
+```
+
+Get the transformation piece (for actions with `=<piece>`).
+
+**Returns:** [String, nil] - EPIN identifier or nil
+
+---
+
+```ruby
+action.to_s
+```
+
+Convert action to PAN string representation.
+
+**Returns:** [String] - PAN notation
+
+**Examples:**
+```ruby
+Sashite::Pan::Action.move("e2", "e4").to_s
+# => "e2-e4"
+
+Sashite::Pan::Action.drop("e5", piece: "P").to_s
+# => "P*e5"
+```
+
+##### Type Queries
+
+```ruby
+action.pass?
+action.move?
+action.capture?
+action.special?
+action.static_capture?
+action.drop?
+action.drop_capture?
+action.modify?
+action.movement?        # true for move, capture, or special
+action.drop_action?     # true for drop or drop_capture
+```
+
+Check action type.
+
+**Returns:** [Boolean]
+
+**Examples:**
+```ruby
+action = Sashite::Pan.parse("e2-e4")
+action.move?       # => true
+action.movement?   # => true
+action.pass?       # => false
+
+pass = Sashite::Pan::Action.pass
+pass.pass?         # => true
+
+drop = Sashite::Pan.parse("P*e5")
+drop.drop?         # => true
+drop.drop_action?  # => true
+```
+
+##### Comparison
+
+```ruby
+action == other
+```
+
+Check equality between actions.
+
+**Parameters:**
+- `other` [Action] - Action to compare with
+
+**Returns:** [Boolean] - true if actions are identical
+
+**Example:**
+```ruby
+action1 = Sashite::Pan.parse("e2-e4")
+action2 = Sashite::Pan::Action.move("e2", "e4")
+action1 == action2  # => true
+```
+
+## Advanced Usage
+
+### Parsing Game Sequences
+
+```ruby
+# Parse a sequence of moves
+moves = %w[e2-e4 e7-e5 g1-f3 b8-c6]
+actions = moves.map { |move| Sashite::Pan.parse(move) }
+
+# Analyze action types
+actions.count(&:move?)     # => 4
+actions.all?(&:movement?)  # => true
+
+# Extract coordinates
+sources = actions.map(&:source)
+destinations = actions.map(&:destination)
+```
+
+### Action Type Detection
+
+```ruby
+def describe_action(pan_string)
+  action = Sashite::Pan.parse(pan_string)
+
+  case action.type
+  when :pass
+    "Player passes"
+  when :move
+    "Move from #{action.source} to #{action.destination}"
+  when :capture
+    "Capture at #{action.destination}"
+  when :special
+    "Special move: #{action.source} to #{action.destination}"
+  when :drop
+    piece_str = action.piece ? "#{action.piece} " : ""
+    "Drop #{piece_str}at #{action.destination}"
+  when :modify
+    "Transform piece at #{action.square} to #{action.piece}"
+  end
 end
 
-begin
-  Sashite::Pan.parse("E2-e4")  # Invalid uppercase file
-rescue Sashite::Pan::Parser::Error => e
-  puts e.message  # => "Invalid PAN format: E2-e4"
-end
-
-begin
-  Sashite::Pan.parse("")  # Empty string
-rescue Sashite::Pan::Parser::Error => e
-  puts e.message  # => "PAN string cannot be empty"
-end
+describe_action("e2-e4")   # => "Move from e2 to e4"
+describe_action("d1+f3")   # => "Capture at f3"
+describe_action("P*e5")    # => "Drop P at e5"
+describe_action("...")     # => "Player passes"
 ```
 
-## Regular Expression Pattern
-
-PAN strings can be validated using this pattern:
+### Transformation Detection
 
 ```ruby
-PAN_PATTERN = /\A(\*|[a-z][0-9][-x])([a-z][0-9])\z/
+def has_promotion?(pan_string)
+  action = Sashite::Pan.parse(pan_string)
+  !action.transformation.nil?
+end
 
-def valid_pan?(string)
-  return false unless string.match?(PAN_PATTERN)
+has_promotion?("e2-e4")      # => false
+has_promotion?("e7-e8=Q")    # => true
+has_promotion?("P*e5")       # => false
+has_promotion?("S*c3=+S")    # => true
+```
 
-  # Additional validation for source != destination
-  if string.include?('-') || string.include?('x')
-    source = string[0..1]
-    destination = string[-2..-1]
-    return source != destination
+### Building Move Generators
+
+```ruby
+class MoveBuilder
+  def initialize(source)
+    @source = source
   end
 
-  true
+  def to(destination)
+    Sashite::Pan::Action.move(@source, destination)
+  end
+
+  def captures(destination)
+    Sashite::Pan::Action.capture(@source, destination)
+  end
+
+  def to_promoting(destination, piece)
+    Sashite::Pan::Action.move(@source, destination, transformation: piece)
+  end
 end
+
+# Usage
+builder = MoveBuilder.new("e7")
+builder.to("e8").to_s                    # => "e7-e8"
+builder.to_promoting("e8", "Q").to_s     # => "e7-e8=Q"
+builder.captures("d8").to_s              # => "e7+d8"
 ```
 
-## Use Cases
+### Validation Before Parsing
 
-### Optimal for PAN
+```ruby
+def safe_parse(pan_string)
+  return nil unless Sashite::Pan.valid?(pan_string)
 
-- **Move logs**: Simple game records where context is available
-- **User interfaces**: Command input for move entry
-- **Network protocols**: Compact move transmission
-- **Quick notation**: Manual notation for simple games
+  Sashite::Pan.parse(pan_string)
+rescue ArgumentError
+  nil
+end
 
-### Consider Alternatives When
+safe_parse("e2-e4")      # => #<Pan::Action ...>
+safe_parse("invalid")    # => nil
+```
 
-- **Ambiguous games**: Multiple pieces can make the same spatial move
-- **Complex promotions**: Games with multiple promotion choices
-- **Analysis tools**: When piece identity is crucial
-- **Self-contained records**: When context is not available
+### Pattern Matching (Ruby 3.0+)
 
-## Integration Considerations
+```ruby
+def analyze(action)
+  case action
+  in { type: :move, source:, destination:, transformation: nil }
+    "Simple move: #{source} → #{destination}"
+  in { type: :move, transformation: piece }
+    "Promotion to #{piece}"
+  in { type: :capture, source:, destination: }
+    "Capture: #{source} takes #{destination}"
+  in { type: :drop, piece:, destination: }
+    "Drop #{piece} at #{destination}"
+  in { type: :pass }
+    "Pass"
+  else
+    "Other action"
+  end
+end
 
-When using PAN in your applications:
+action = Sashite::Pan.parse("e7-e8=Q")
+analyze(action)  # => "Promotion to Q"
+```
 
-1. **Always pair with context**: Store board state alongside PAN moves
-2. **Document assumptions**: Clearly specify how ambiguities are resolved
-3. **Validate rigorously**: Check both syntax and semantic validity
-4. **Handle edge cases**: Plan for promotion and drop ambiguities
+## Properties
 
-## Properties of PAN
+* **Operator-based**: Intuitive symbols for different action types
+* **Compact notation**: Minimal character usage while maintaining readability
+* **Game-agnostic**: Works across chess, shōgi, xiangqi, and other abstract strategy games
+* **CELL integration**: Uses CELL coordinates for board positions
+* **EPIN integration**: Uses EPIN identifiers for piece representation
+* **Immutable**: All action objects are frozen
+* **Functional**: Pure functions with no side effects
+* **Type-safe**: Strong validation and error handling
 
-- **Rule-agnostic**: Does not encode piece types, legality, or game-specific conditions
-- **Compact**: Minimal character overhead (3-5 characters per move)
-- **Human-readable**: Intuitive algebraic notation
-- **Space-efficient**: Excellent for large game databases
-- **Context-dependent**: Requires external game state for complete interpretation
+## Related Specifications
+
+- [PAN Specification v1.0.0](https://sashite.dev/specs/pan/1.0.0/) - Complete format specification
+- [PAN Examples](https://sashite.dev/specs/pan/1.0.0/examples/) - Usage examples across different games
+- [CELL](https://sashite.dev/specs/cell/) - Coordinate encoding for board positions
+- [EPIN](https://sashite.dev/specs/epin/) - Extended piece identifiers
+- [Game Protocol](https://sashite.dev/protocol/) - Conceptual foundation
 
 ## Documentation
 
-- [Official PAN Specification](https://sashite.dev/documents/pan/1.0.0/)
+- [Official PAN Specification v1.0.0](https://sashite.dev/specs/pan/1.0.0/)
 - [API Documentation](https://rubydoc.info/github/sashite/pan.rb/main)
+- [PAN Examples](https://sashite.dev/specs/pan/1.0.0/examples/)
+
+## Development
+
+```sh
+# Clone the repository
+git clone https://github.com/sashite/pan.rb.git
+cd pan.rb
+
+# Install dependencies
+bundle install
+
+# Run tests
+ruby test.rb
+
+# Generate documentation
+yard doc
+```
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/new-feature`)
+3. Add tests for your changes
+4. Ensure all tests pass (`ruby test.rb`)
+5. Commit your changes (`git commit -am 'Add new feature'`)
+6. Push to the branch (`git push origin feature/new-feature`)
+7. Create a Pull Request
 
 ## License
 
-The [gem](https://rubygems.org/gems/sashite-pan) is available as open source under the terms of the [MIT License](https://opensource.org/licenses/MIT).
+Available as open source under the [MIT License](https://opensource.org/licenses/MIT).
 
-## About Sashité
+## About
 
-This project is maintained by [Sashité](https://sashite.com/) — promoting chess variants and sharing the beauty of Chinese, Japanese, and Western chess cultures.
+Maintained by [Sashité](https://sashite.com/) – promoting chess variants and sharing the beauty of board game cultures.
